@@ -41,9 +41,11 @@
 #define CONTROL_BUFSIZE     100
 #define LIST_BUFSIZE       2000
 #define MAX_FILENAME_LEN     79
+#define BUFFER_SIZE		 0x7000
 #define MAX_FILESIZE_MB		  2
 
 #include <stdio.h>                     /* printf etc. */
+#include <stdint.h>
 #include <stdlib.h>                    /* strtol, malloc */
 #include <string.h>                    /* strncpy, strlen */
 #include <ctype.h>                     /* tolower */
@@ -54,6 +56,7 @@
 #else
 #include <unistd.h>                    /* usleep, chdir */
 #endif
+#include <sys/stat.h>                  /* fstat */
 
 #ifdef PPDEV
 
@@ -87,7 +90,7 @@
 #ifdef RASPIWIRING
 //default GPIO pins
 const unsigned int wiringClkOut = 7; //GPIO07 pin 7
-                                   //GND    pin 9
+                                  	 //GND    pin 9
 const unsigned int wiringBitOut = 0; //GPIO00 pin 11
 const unsigned int wiringClkIn  = 2; //GPIO02 pin 13
 const unsigned int wiringBitIn  = 3; //GPIO03 pin 15
@@ -115,27 +118,33 @@ unsigned char * controlData;
 unsigned char * list;
 
 
-unsigned char transmitInit[90] =
-	{ /* Offset 0: Funktion */
-		0x03, 0x00, 0x70, 0x0C, 0x7A, 0x21, 0x32,
-		/* Offset 7: Dateilaenge */
-		0, 0, 0, 0
-		/* Offset 11: Pfad */
-	};
+#pragma pack(1)
+struct transmit_data {
+   uint8_t   cmd;
+   uint16_t  buffer_size;
+   uint16_t  seconds : 5;
+   uint16_t  minutes : 6;
+   uint16_t  hours : 5;
+   uint16_t  day : 5;
+   uint16_t  month : 4;
+   uint16_t  year : 7;
+   uint32_t  fsize;
+   char file_path[MAX_FILENAME_LEN];
+} transmitInit = {
+	.cmd = 3, 
+	.buffer_size = BUFFER_SIZE 
+};
+#pragma pack()
 
-const unsigned char transmitOverwrite[3] = { 0x05, 0x00, 0x70 };
+unsigned char receiveInit[82] = { 
+	0x06,         /* Offset 0: Funktion */
+	0x00, 0x70    /* Offset 2: Puffergroesse = 28672 Byte */
+				/* Offset 3: Pfad */
+};
 
-const unsigned char transmitCancel[3] = { 0x00, 0x00, 0x00 };
-
-
-unsigned char receiveInit[82] =
-	{ 0x06,         /* Offset 0: Funktion */
-		0x00, 0x70    /* Offset 2: Puffergroesse = 28672 Byte */
-									/* Offset 3: Pfad */
-	};
-
-const unsigned char receiveFinish[3] = { 0x20, 0x00, 0x03 };
-
+const unsigned char transmitOverwrite[3] 	= { 0x05, 0x00, 0x70 };
+const unsigned char transmitCancel[3] 		= { 0x00, 0x00, 0x00 };
+const unsigned char receiveFinish[3] 		= { 0x20, 0x00, 0x03 };
 
 #if defined(PPDEV)
 #include <time.h>
@@ -323,7 +332,7 @@ void sendByte(unsigned char byte)
 	int i;
 	unsigned char b;
 
-#if def __DMC__
+#ifdef __DMC__
 	/* Should be usleep(50), but smaller arguments than 1000 result in no delay */
 	usleep(1000);
 #else
@@ -486,46 +495,78 @@ int receiveBlock(unsigned char *pData, const int maxLen, const VERBOSITY verbosi
 	return len;
 }
 
-
-/*
-	Read source file on PC and transmit it to the Portfolio (/t)
+/* 
+	returns the file creation time
 */
-void transmitFile(const char * source, const char * dest) {
-	FILE * file = fopen(source, "rb");
-	int val, len, blocksize;
+struct tm* getFileTime(FILE *file) {
+	struct stat statbuf;
 
-	if (file == NULL) {
-		fprintf(stderr, "File not found: %s\n", source);
+	if (fstat(fileno(file), &statbuf)) {
+		fprintf(stderr, "stat() failed\n");
 		exit(EXIT_FAILURE);
 	}
+	return localtime(&statbuf.st_mtime);
+}
 
-	/*
-		Dateigroesse ermitteln
-	*/
+/* 
+	returns the file size
+*/
+int getFileSize(FILE *file) {
+	int val, len;
 	val = fseek(file, 0, SEEK_END);
 	if (val != 0) {
 		fprintf(stderr, "Seek error!\n");
 		exit(EXIT_FAILURE);
 	}
 	len = ftell(file);
-	if (len == -1 || len > MAX_FILE_SIZE_MB * 1024 * 1024) {
-		/* Directories and huge files (>32 MB) are skipped */
-		fprintf(stderr, "Skipping %s.\n", source);
-		return;
+	/* Directories and huge files (>32 MB) are skipped */
+	if (len == -1 || len > 32*1024*1024) {
+		return -1;
 	}
 	val = fseek(file, 0, SEEK_SET);
 	if (val != 0) {
 		fprintf(stderr, "Seek error!\n");
 		exit(EXIT_FAILURE);
 	}
+	return len;
+}
 
-	transmitInit[7] = len & 255;
-	transmitInit[8] = (len >> 8) & 255;
-	transmitInit[9] = (len >> 16) & 255;
+/*
+	Read source file on PC and transmit it to the Portfolio (/t)
+*/
+void transmitFile(const char * source, const char *dest) {
+	FILE *file = fopen(source, "rb");
+	int len, blocksize;
+	struct transmit_data* tp;
+    tp = &transmitInit;
 
-	strncpy((char*)transmitInit+11, dest, MAX_FILENAME_LEN);
+	if (file == NULL) {
+		fprintf(stderr, "File not found: %s\n", source);
+		exit(EXIT_FAILURE);
+	}
 
-	sendBlock(transmitInit, sizeof(transmitInit), VERB_ERRORS);
+	struct tm * modtime = getFileTime(file);
+	transmitInit.hours = modtime->tm_hour;
+	transmitInit.minutes = modtime->tm_min;
+	transmitInit.seconds = modtime->tm_sec;
+	transmitInit.year = modtime->tm_year + 1900 - 2000;
+	transmitInit.month = modtime->tm_mon + 1;
+	transmitInit.day = modtime->tm_mday;
+
+	len = getFileSize(file);
+	if (transmitInit.fsize == -1) {
+		fprintf(stderr, "Skipping %s.\n", source);
+		return;
+	}
+	transmitInit.fsize = len;
+	strncpy((char*)&transmitInit.file_path, dest, MAX_FILENAME_LEN);
+/*
+printf("date: %d-%.2d-%.2d\n", transmitInit.year, transmitInit.month, transmitInit.day);
+printf("time: %.2d:%.2d:%.2d\n", transmitInit.hours, transmitInit.minutes, transmitInit.seconds);
+printf("size: %d\n", transmitInit.fsize);
+printf("file: [%s]\n", transmitInit.file_path);
+*/
+	sendBlock((char *) tp, sizeof(transmitInit), VERB_ERRORS);
 	receiveBlock(controlData, CONTROL_BUFSIZE, VERB_ERRORS);
 
 	if (controlData[0] == 0x10) {
@@ -555,7 +596,7 @@ void transmitFile(const char * source, const char * dest) {
 	if (len > blocksize) {
 		printf("Transmission consists of %d blocks of payload.\n", (len+blocksize-1)/blocksize);
 	}
-				int readed;
+	int readed;
 	while (len > blocksize) {
 		readed = fread(payload, sizeof(char), blocksize, file);
 		sendBlock(payload, blocksize, VERB_COUNTER);
@@ -573,6 +614,9 @@ void transmitFile(const char * source, const char * dest) {
 		fprintf(stderr, "Transmission failed!\nPossilby disk full on Portfolio or directory does not exist.\n");
 		exit(EXIT_FAILURE);
 	}
+/*	
+	printf("%.2X%.2X %.2X%.2X%.2X%.2X\n", controlData[1], controlData[2], controlData[3], controlData[4], controlData[5], controlData[6]);
+*/
 }
 
 
@@ -584,7 +628,7 @@ void receiveFile(const char * source, const char * dest) {
 	FILE * file;
 	int i, num, len, total;
 	int destIsDir = 0;
-	int blocksize = 0x7000;   /* TODO: Check if this is always the same */
+	int blocksize = BUFFER_SIZE;   /* TODO: Check if this is always the same */
 	char startdir[256];
 	char *namebase;
 	char *basename;
