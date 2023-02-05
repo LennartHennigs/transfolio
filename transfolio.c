@@ -41,6 +41,7 @@
 #define CONTROL_BUFSIZE     100
 #define LIST_BUFSIZE       2000
 #define MAX_FILENAME_LEN     79
+#define MAX_FILESIZE_MB		  2
 
 #include <stdio.h>                     /* printf etc. */
 #include <stdlib.h>                    /* strtol, malloc */
@@ -506,7 +507,7 @@ void transmitFile(const char * source, const char * dest) {
 		exit(EXIT_FAILURE);
 	}
 	len = ftell(file);
-	if (len == -1 || len > 32*1024*1024) {
+	if (len == -1 || len > MAX_FILE_SIZE_MB * 1024 * 1024) {
 		/* Directories and huge files (>32 MB) are skipped */
 		fprintf(stderr, "Skipping %s.\n", source);
 		return;
@@ -1019,6 +1020,5 @@ int main(int argc, char* argv[])
 #elif defined(__DMC__) && !defined(DIRECTIO)
 	FreeLibrary(hLib);
 #endif
-
 	return(0);
 }
