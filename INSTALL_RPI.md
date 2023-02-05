@@ -25,8 +25,8 @@
   ```bash
   ./rpfolio -l "*.*"
   ```
-  
-# Connection between RaspberyPi and Atari Portfolio
+
+## Connection between RaspberyPi and Atari Portfolio
 
 | Raspbery Pi                | direction | Portfolio printer port |
 -----------------------------|-----|--------------------------|
@@ -36,8 +36,7 @@
 | wiringClkIn  GPIO02 pin 13 | <= | printer status PAPEROUOT pin 12 |
 | wiringBitIn  GPIO03 pin 15 | <= | printer status SELECT pin 13 |
 
-
-# Pinout is defined in transfolio.c
+## Pinout is defined in transfolio.c
 
 ```bash
 const unsigned int wiringClkOut = 7; // GPIO07 pin 7
