@@ -49,13 +49,13 @@
 #include <ctype.h>                     /* tolower */
 #include <dirent.h>
 #include <time.h>                      /* usleep / nanosleep */
-#if defined(__DMC__)
+#ifdef __DMC__
 #include <direct.h>                    /* chdir */
 #else
 #include <unistd.h>                    /* usleep, chdir */
 #endif
 
-#if defined(PPDEV)
+#ifdef PPDEV
 
  #include <sys/ioctl.h>
  #include <fcntl.h>                     /* open */
@@ -84,7 +84,7 @@
 
 #endif
 
-#if defined(RASPIWIRING)
+#ifdef RASPIWIRING
 //default GPIO pins
 const unsigned int wiringClkOut = 7; //GPIO07 pin 7
                                    //GND    pin 9
@@ -155,6 +155,7 @@ int openPort(const char * device) {
 	if (ioctl(fd, PPCLAIM)) {
 		perror("PPCLAIM");
 		close(fd);
+		fprintf(stderr, "Try 'fuser -m %s' to see if other processes use the device.\n", device);
 		return -1;
 	}
 	fprintf(stderr, "%s sucessfully opened.               \r", device);
@@ -322,7 +323,7 @@ void sendByte(unsigned char byte)
 	int i;
 	unsigned char b;
 
-#if defined(__DMC__)
+#if def __DMC__
 	/* Should be usleep(50), but smaller arguments than 1000 result in no delay */
 	usleep(1000);
 #else
