@@ -36,13 +36,14 @@
 #define PPDEV            "/dev/parport0"
 #endif
 #endif
-#define DATAPORT          0x378
-#define PAYLOAD_BUFSIZE   60000
-#define CONTROL_BUFSIZE     100
-#define LIST_BUFSIZE       2000
-#define MAX_FILENAME_LEN     79
-#define BUFFER_SIZE		 0x7000
-#define MAX_FILESIZE_MB		  2
+#define DATAPORT			0x378
+#define PAYLOAD_BUFSIZE 	60000
+#define CONTROL_BUFSIZE 	100
+#define LIST_BUFSIZE    	2000
+#define MAX_FILENAME_LEN	79
+#define BUFFER_SIZE			0x7000
+#define MAX_FILESIZE_MB		2
+#define VERSION_NUMBER		"1.1.0"
 
 #include <stdio.h>                     /* printf etc. */
 #include <stdint.h>
@@ -856,7 +857,7 @@ int main(int argc, char* argv[])
 	int  i, j;
 
 
-	printf("Transfolio 1.0 - (c) 2018 by Klaus Peichl\n");
+	printf("Transfolio %s - (c) 2018 by Klaus Peichl\n", VERSION_NUMBER);
 
 	/*
 		Command line parsing: Get source, destination, mode and the force flag
