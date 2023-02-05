@@ -28,8 +28,8 @@
   
 # Connection between RaspberyPi and Atari Portfolio
 
-| Raspbery Pi               | direction | Portfolio printer port |
-----------------------------|-----|--------------------------|
+| Raspbery Pi                | direction | Portfolio printer port |
+-----------------------------|-----|--------------------------|
 | wiringClkOut GPIO07 pin 7  |  => | printer data bit 1 pin 3 |
 | GND pin 9                  | == | GND pin 18-25 |
 | wiringBitOut GPIO00 pin 11 | => | printer data bit 0 pin 2 |
