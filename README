@@ -9,6 +9,7 @@ Contents of this package:
 README            This file
 transfolio.exe    Precompiled Windows executable (32 bit, command line)
 inpout32.dll      3rd party Library required by transfolio.exe
+                    https://www.highrez.co.uk/Downloads/InpOut32/
 transfolio.c      Source code
 Makefile          Linux Makefile
 transfolio        Linux executable (x86)
