@@ -1,4 +1,12 @@
 
+# 1.1.0 (2018-05-21)
+
+- Michał Skuza added Raspberry Pi Support
+# 1.0.1 (2018-11-25)
+
+- Small improvement of error message strings.
+- Included new version of inpout32.dll from https://www.highrez.co.uk/Downloads/InpOut32/
+
 # 1.0  (2018-02-18)
 
 ## Bugfix
