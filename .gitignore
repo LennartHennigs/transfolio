@@ -1,6 +1,8 @@
 # mac files
 .DS_Store
 
+.vscode/*
+
 *.swp
 transfolio
 rpfolio
