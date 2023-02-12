@@ -1,9 +1,15 @@
 
 # Changelog
 
+## uncommited changes
+
+- added new data structure for transmitting files (fixes file date error)
+- beautified code and simplified pre-processor conditions
+
 ## 1.1.0 (2018-05-21)
 
 - [Michał Skuza](https://github.com/skudi/transfolio) added Raspberry Pi Support
+
 ## 1.0.1 (2018-11-25)
 
 - Small improvement of error message strings.
