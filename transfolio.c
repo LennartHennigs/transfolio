@@ -246,7 +246,7 @@ int openPort(const unsigned short port) {
   Reads the status register of the parallel port
 */
 static inline unsigned char readPort(void) {
-  unsigned char byte;
+  unsigned char byte = 0;
 #if defined(__DMC__)
 
 #if defined(DIRECTIO)
@@ -282,11 +282,9 @@ static inline void writePort(const unsigned char byte) {
 #elif defined(DIRECTIO)
 #if defined(__DMC__)
   ioctl(fd, PPWDATA, &byte);
-  #else
-    (oup32)(dataPort, byte);
+#else
+  (oup32)(dataPort, byte);
 #endif
-#endif
-
 #endif
 }
 
@@ -439,7 +437,7 @@ void sendBlock(const unsigned char *pData, const unsigned int len, const VERBOSI
   Receives a block of data and returns its length in bytes.
   Call int 61h with AX=3002 (open) and AX=3000 (transmit) on the Portfolio.
 */
-int receiveBlock(unsigned char *pData, const int maxLen, const VERBOSITY verbosity) {
+int receiveBlock(unsigned char *pData, const unsigned int maxLen, const VERBOSITY verbosity) {
   unsigned int len, i;
   unsigned char lenH, lenL;
   unsigned char checksum = 0;
