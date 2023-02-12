@@ -44,6 +44,8 @@
 #pragma message "Using DIRECTIO flag"
 #elif defined(RASPIWIRING)
 #pragma message "Using RASPIWIRING flag"
+#elif defined(PPDEV)
+#pragma message "Using PPDEV flag"
 #endif
 
 /////////////////////////////////////////////////////////////////
@@ -130,7 +132,7 @@ unsigned short statusPort;
 #endif
 
 /////////////////////////////////////////////////////////////////
-
+/* output levels for send and receive block */
 typedef enum {
   VERB_QUIET = 0,
   VERB_ERRORS,
@@ -138,6 +140,7 @@ typedef enum {
   VERB_FLOWCONTROL
 } VERBOSITY;
 
+/* data strcuture for sending data, will only work on little endian systems */
 #pragma pack(1)
 struct transmit_data {
   uint8_t cmd;
@@ -167,7 +170,7 @@ const unsigned char receiveFinish[3] = {0x20, 0x00, 0x03};
 
 /////////////////////////////////////////////////////////////////
 /*
-        Open parallel port. Returns 0 on success
+  Opens parallel port. Returns 0 on success
 */
 #if defined(PPDEV)
 int openPort(const char *device) {
@@ -240,7 +243,7 @@ int openPort(const unsigned short port) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        Read the status register of the parallel port
+  Reads the status register of the parallel port
 */
 static inline unsigned char readPort(void) {
   unsigned char byte;
@@ -268,26 +271,20 @@ static inline unsigned char readPort(void) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        Output a byte to the data register of the parallel port
+  Outputs a byte to the data register of the parallel port
 */
 static inline void writePort(const unsigned char byte) {
-#if defined(__DMC__)
-
-#if defined(DIRECTIO)
-  outp(dataPort, byte);
-#else
-  (oup32)(dataPort, byte);
-#endif
-
-#else
-
 #if defined(DIRECTIO)
   outb(byte, dataPort);
 #elif defined(RASPIWIRING)
   digitalWrite(wiringBitOut, byte & 0x01);
   digitalWrite(wiringClkOut, (byte >> 1) & 0x01);
 #elif defined(DIRECTIO)
+#if defined(__DMC__)
   ioctl(fd, PPWDATA, &byte);
+  #else
+    (oup32)(dataPort, byte);
+#endif
 #endif
 
 #endif
@@ -319,8 +316,8 @@ static inline unsigned char getBit(void) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        Receives one byte serially, MSB first
-        One bit is read on every falling and every rising slope of the clock signal.
+  Receives one byte serially, MSB first
+  One bit is read on every falling and every rising slope of the clock signal.
 */
 unsigned char receiveByte(void) {
   int i;
@@ -339,8 +336,8 @@ unsigned char receiveByte(void) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        Transmits one byte serially, MSB first
-        One bit is transmitted on every falling and every rising slope of the clock signal.
+  Transmits one byte serially, MSB first
+  One bit is transmitted on every falling and every rising slope of the clock signal.
 */
 void sendByte(unsigned char byte) {
   int i;
@@ -377,8 +374,8 @@ void sendByte(unsigned char byte) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        This function transmits a block of data.
-        Call int 61h with AX=3002 (open) and AX=3001 (receive) on the Portfolio
+  Transmits a block of data.
+  Call int 61h with AX=3002 (open) and AX=3001 (receive) on the Portfolio
 */
 void sendBlock(const unsigned char *pData, const unsigned int len, const VERBOSITY verbosity) {
   unsigned char byte;
@@ -439,8 +436,8 @@ void sendBlock(const unsigned char *pData, const unsigned int len, const VERBOSI
 
 /////////////////////////////////////////////////////////////////
 /*
-         This function receives a block of data and returns its length in bytes.
-         Call int 61h with AX=3002 (open) and AX=3000 (transmit) on the Portfolio.
+  Receives a block of data and returns its length in bytes.
+  Call int 61h with AX=3002 (open) and AX=3000 (transmit) on the Portfolio.
 */
 int receiveBlock(unsigned char *pData, const int maxLen, const VERBOSITY verbosity) {
   unsigned int len, i;
@@ -508,7 +505,7 @@ int receiveBlock(unsigned char *pData, const int maxLen, const VERBOSITY verbosi
 
 /////////////////////////////////////////////////////////////////
 /*
-        returns the file creation time
+  Returns the file creation time
 */
 struct tm *getFileTime(FILE *file) {
   struct stat statbuf;
@@ -522,7 +519,7 @@ struct tm *getFileTime(FILE *file) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        returns the file size
+  Returns the file size
 */
 int getFileSize(FILE *file) {
   int val, len;
@@ -546,7 +543,7 @@ int getFileSize(FILE *file) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        Read source file on PC and transmit it to the Portfolio (/t)
+  Reads source file on PC and transmit it to the Portfolio (/t)
 */
 void transmitFile(const char *source, const char *dest) {
   FILE *file = fopen(source, "rb");
@@ -634,7 +631,7 @@ void transmitFile(const char *source, const char *dest) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        Receive source file(s) from the Portfolio and save it on the PC (/r)
+  Receives source file(s) from the Portfolio and save it on the PC (/r)
 */
 void receiveFile(const char *source, const char *dest) {
   static int nReceivedFiles = 0;
@@ -760,7 +757,7 @@ void receiveFile(const char *source, const char *dest) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        Get directory listing from the Portfolio and display it (/l)
+  Gets directory listing from the Portfolio and display it (/l)
 */
 void listFiles(const char *pattern) {
   int i, num;
@@ -786,9 +783,9 @@ void listFiles(const char *pattern) {
 
 /////////////////////////////////////////////////////////////////
 /*
-        Assemble full destination path and name if only the destination directory is given.
-        The current source file name is appended to the destination directory and modified
-        to fulfill the (most important) DOS file naming restrictions.
+    Assembles full destination path and name if only the destination directory is given.
+    The current source file name is appended to the destination directory and modified
+    to fulfill the (most important) DOS file naming restrictions.
 */
 void composePofoName(char *source, char *dest, char *pofoName, int sourcecount) {
   char *pos;
@@ -867,10 +864,7 @@ int main(int argc, char *argv[]) {
   int i, j;
 
   printf("Transfolio %s - (c) 2018 by Klaus Peichl\n", VERSION_NUMBER);
-
-  /*
-          Command line parsing: Get source, destination, mode and the force flag
-  */
+  /* Command line parsing: Get source, destination, mode and the force flag */
   for (i = 1; i < argc; i++) {
     if (argv[i][0] == '-'
 #if defined(__DMC__)
