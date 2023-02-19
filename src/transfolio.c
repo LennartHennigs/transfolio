@@ -619,7 +619,7 @@ void transmitFile(const char *source, const char *dest) {
   fclose(file);
 
   if (controlData[0] != 0x20) {
-    fprintf(stderr, "Transmission failed!\nPossilby disk full on Portfolio or directory does not exist.\n");
+    fprintf(stderr, "Transmission failed!\nPossibly disk full on Portfolio or directory does not exist.\n");
     exit(EXIT_FAILURE);
   }
   /*
