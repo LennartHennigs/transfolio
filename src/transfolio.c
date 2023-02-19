@@ -740,7 +740,38 @@ void receiveFile(const char *source, const char *dest) {
     fclose(file);
 
     basename += strlen(basename) + 1;
+/*
+// !!! NEW
+    struct stat statBuf;
+    struct utimbuf newTimes;
+    struct tm modTime;
+
+    if (stat(dest, &statBuf) < 0) {
+      fprintf(stderr, "Failed to get timestamp for file %s\n", dest);
+      exit(EXIT_FAILURE);
+    }
+    newTimes.actime = statBuf.st_atime;   // keep atime unchanged
+    int val = (controlData[4] << 8) + controlData[3];
+    modTime.tm_hour = (val >> 11) & 0x1f;
+    modTime.tm_min = (val >> 5) & 0x3f;
+    modTime.tm_sec = (val << 1) & 0x3e;
+
+    val = (controlData[6] << 8) + controlData[5];
+    modTime.tm_year = ((val >> 9) & 0x7f) - 1900 + 1980;
+    modTime.tm_mon = ((val >> 5) & 0x0f) - 1;
+    modTime.tm_mday = val & 0x1f;
+
+    modTime.tm_isdst = -1;
+
+    newTimes.modtime = mktime(&modTime);
+
+    if (utime(dest, &newTimes) < 0) {
+      fprintf(stderr, "Failed to set timestamp for file %s\n", dest);
+      exit(EXIT_FAILURE);
+    }
   }
+// !!! NEW END
+*/
 
   /* Change back to original directory */
   if (destIsDir) {
@@ -749,7 +780,6 @@ void receiveFile(const char *source, const char *dest) {
       exit(EXIT_FAILURE);
     }
   }
-
   nReceivedFiles += num;
 }
 
